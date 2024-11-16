@@ -46,6 +46,20 @@ This web application provides an easy-to-use dashboard for tracking expenses, se
 6. **Access the application**:
    - Open your browser and go to `http://127.0.0.1:5000`.
 
+## Screenshots
+
+### Spending Insights
+![Spending Insights](images/spending_insights.png)
+
+### Spending by Category & Spending Trend
+![Spending by Category & Spending Trend](images/spending_category_trend.png)
+
+### Insights & Monthly Spending Trend
+![Insights & Monthly Spending Trend](images/insights_monthly_trend.png)
+
+### Set Spending Priorities
+![Set Spending Priorities](images/set_priorities.png)
+
 ## Contributing
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
