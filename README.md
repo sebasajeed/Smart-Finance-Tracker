@@ -36,7 +36,11 @@ This web application provides an easy-to-use dashboard for tracking expenses, se
 
 4. **Set up the database**:
    - Create a MySQL database named `finance_tracker`.
-   - Run the provided SQL script to create necessary tables.
+   - Run the provided SQL script to create necessary tables:
+     ```bash
+     mysql -u your_username -p finance_tracker < setup.sql
+     ```
+     Replace `your_username` with your MySQL username.
 
 5. **Run the application**:
    ```bash
