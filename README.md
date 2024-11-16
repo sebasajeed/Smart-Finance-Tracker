@@ -48,9 +48,6 @@ This web application provides an easy-to-use dashboard for tracking expenses, se
 
 ## Screenshots
 
-### Spending Insights
-![Spending Insights](images/spending_insights.png)
-
 ### Spending by Category & Spending Trend
 ![Spending by Category & Spending Trend](images/spending_category_trend.png)
 
