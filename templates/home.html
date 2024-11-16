@@ -83,7 +83,7 @@
         <a href="/add">Add Transaction</a>
         <a href="/all">View All Transactions</a>
         <a href="/priorities">Set Spending Priorities</a>
-        <a href="#insights-section">View Budget Insights</a> <!-- Updated to scroll to the insights section -->
+        <a href="#insights-section">View Budget Insights</a>
     </div>
 
     <!-- Toggle Button -->
@@ -141,7 +141,7 @@
                 <div class="mt-3">
                     <a href="/add" class="btn btn-primary">Add a Transaction</a>
                     <a href="/all" class="btn btn-secondary">View All Transactions</a>
-                    <a href="/priorities" class="btn btn-secondary">Set Priorities</a> <!-- Added Set Priorities Button -->
+                    <a href="/priorities" class="btn btn-secondary">Set Priorities</a>
                 </div>
             </div>
         </div>
@@ -160,21 +160,22 @@
                 </div>
             </div>
 
-            <!-- YTD Spending Chart (3/5 Width) -->
+            <!-- Spending Trend Chart (3/5 Width) -->
             <div class="col-md-8 mb-4">
                 <div class="card bg-dark text-white border-0 shadow-sm">
                     <div class="card-header border-0 d-flex justify-content-between">
-                        <h2 class="mb-0">YTD Spending Trend</h2>
+                        <h2 class="mb-0">Spending Trend</h2>
                         <div>
-                            <select id="ytdTimelineType" class="form-select form-select-sm text-dark">
+                            <select id="spendingTimelineType" class="form-select form-select-sm text-dark">
                                 <option value="week">Weekly</option>
                                 <option value="month" selected>Monthly</option>
-                                <option value="year">Yearly</option>
+                                <option value="year">Yearly (Aggregated)</option>
+                                <option value="year_trend">Yearly Trend (Current Year)</option>
                             </select>
                         </div>
                     </div>
                     <div class="card-body">
-                        <canvas id="ytdTrendChart"></canvas>
+                        <canvas id="spendingTrendChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -183,18 +184,20 @@
         <!-- Insights Section -->
         <div id="insights-section" class="card bg-dark text-white border-0 shadow-sm mb-4">
             <div class="card-header border-0">
-                <h2 class="mb-0">Spending Insights</h2>
+                <h2 class="mb-0">Insights</h2>
             </div>
             <div class="card-body">
-                {% if insights %}
-                    <div class="list-group">
-                        {% for insight in insights %}
-                            <div class="list-group-item bg-dark text-white">{{ insight.message }}</div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p>No insights available. Add transactions and set priorities to view insights.</p>
-                {% endif %}
+                <div id="insights-container">
+                    {% if insights %}
+                        <ul>
+                            {% for insight in insights %}
+                                <li>{{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No insights available. Set your spending priorities to receive insights.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -224,7 +227,8 @@
             const ytdTrend = {
                 week: {},
                 month: {},
-                year: {}
+                year: {},
+                year_trend: {}
             };
 
             // Aggregate data for donut chart
@@ -237,10 +241,12 @@
                 const week = `Week ${Math.ceil(dateObj.getDate() / 7)} ${dateObj.getFullYear()}`;
                 const month = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
                 const year = dateObj.getFullYear();
+                const yearTrendLabel = dateObj.toISOString().split('T')[0]; // Label for year trend (day by day)
 
                 ytdTrend.week[week] = (ytdTrend.week[week] || 0) + amount;
                 ytdTrend.month[month] = (ytdTrend.month[month] || 0) + amount;
                 ytdTrend.year[year] = (ytdTrend.year[year] || 0) + amount;
+                ytdTrend.year_trend[yearTrendLabel] = (ytdTrend.year_trend[yearTrendLabel] || 0) + amount;
             });
 
             // Donut Chart data preparation with depth effect
@@ -249,9 +255,6 @@
                 const data = Object.values(categories);
                 if (categoryChartInstance) categoryChartInstance.destroy();
                 const ctx = document.getElementById('categoryChart').getContext('2d');
-                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, '#ff6384');
-                gradient.addColorStop(1, '#cc65fe');
                 categoryChartInstance = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
@@ -260,14 +263,14 @@
                             label: 'Spending by Category',
                             data: data,
                             backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
-                            hoverOffset: 6, // Increased hover offset for a "pop" effect
+                            hoverOffset: 6,
                             borderColor: 'rgba(0, 0, 0, 0.1)',
                             borderWidth: 2
                         }]
                     },
                     options: {
                         responsive: true,
-                        cutout: '50%', // Creates the donut hole
+                        cutout: '50%',
                         plugins: {
                             legend: {
                                 position: 'bottom',
@@ -280,8 +283,8 @@
                             }
                         },
                         animation: {
-                            animateScale: true, // Adds a scaling effect
-                            animateRotate: true // Adds a rotation effect
+                            animateScale: true,
+                            animateRotate: true
                         }
                     }
                 });
@@ -290,16 +293,16 @@
             let categoryChartInstance;
             createDonutChart();
 
-            function createYTDChart(timeline) {
-                const labels = Object.keys(ytdTrend[timeline]).sort().reverse(); // Reverse for chronological order
+            function createSpendingTrendChart(timeline) {
+                const labels = Object.keys(ytdTrend[timeline]).sort((a, b) => new Date(a) - new Date(b)); // Sort in chronological order
                 const data = labels.map(label => ytdTrend[timeline][label]);
-                if (ytdChartInstance) ytdChartInstance.destroy();
-                ytdChartInstance = new Chart(document.getElementById('ytdTrendChart'), {
+                if (spendingChartInstance) spendingChartInstance.destroy();
+                spendingChartInstance = new Chart(document.getElementById('spendingTrendChart'), {
                     type: 'line',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: `YTD Spending (${timeline.charAt(0).toUpperCase() + timeline.slice(1)})`,
+                            label: `Spending Trend (${timeline.replace('_', ' ').charAt(0).toUpperCase() + timeline.slice(1)})`,
                             data: data,
                             borderColor: '#4bc0c0',
                             tension: 0.1,
@@ -335,9 +338,9 @@
                 });
             }
 
-            let ytdChartInstance;
-            createYTDChart('month');
-            document.getElementById('ytdTimelineType').addEventListener('change', (e) => createYTDChart(e.target.value));
+            let spendingChartInstance;
+            createSpendingTrendChart('month');
+            document.getElementById('spendingTimelineType').addEventListener('change', (e) => createSpendingTrendChart(e.target.value));
         </script>
     </div>
 </body>
