@@ -1,0 +1,20 @@
+# Ignore virtual environment
+env/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore database files (optional)
+*.sqlite3
+
+# Ignore system files
+.DS_Store
+
+# Ignore VSCode settings (if using VSCode)
+.vscode/
+
+# Ignore compiled files and logs
+*.log
+*.out
+*.o

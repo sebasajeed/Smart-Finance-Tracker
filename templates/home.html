@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker - Home</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script> <!-- Include Chart.js Zoom Plugin -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+        }
+        .sidebar {
+            width: 200px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #2c3e50;
+            padding-top: 20px;
+            transition: transform 0.3s ease;
+            transform: translateX(-100%); /* Closed by default */
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 16px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+        .close-button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 24px;
+            padding: 5px;
+            float: right;
+            margin-right: 10px;
+        }
+        .toggle-button {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 24px;
+            z-index: 1000;
+        }
+        .toggle-button.hidden {
+            display: none;
+        }
+        .content {
+            margin-left: 20px; /* Adjusted for default closed sidebar */
+            padding: 20px;
+            width: calc(100% - 20px);
+            transition: margin-left 0.3s ease;
+        }
+        .content.expanded {
+            margin-left: 220px;
+            width: calc(100% - 220px);
+        }
+    </style>
+</head>
+<body class="bg-dark text-white">
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-button" id="closeSidebar">&times;</button>
+        <a href="/">Home</a>
+        <a href="/add">Add Transaction</a>
+        <a href="/all">View All Transactions</a>
+        <a href="/priorities">Set Spending Priorities</a>
+        <a href="#insights-section">View Budget Insights</a> <!-- Updated to scroll to the insights section -->
+    </div>
+
+    <!-- Toggle Button -->
+    <button class="toggle-button" id="toggleSidebar">&#9776;</button>
+
+    <div class="content" id="content">
+        <!-- Transactions Table -->
+        <div class="card bg-dark text-white border-0 shadow-sm mb-4">
+            <div class="card-header border-0">
+                <h2 class="mb-0">Recent Transactions</h2>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                    <table class="table table-hover table-dark table-striped align-middle">
+                        <thead class="bg-secondary">
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Amount</th>
+                                <th scope="col">Category</th>
+                                <th scope="col">Description</th>
+                                <th scope="col" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.date }}</td>
+                                <td>${{ '%.2f' | format(transaction.amount) }}</td>
+                                <td>{{ transaction.category }}</td>
+                                <td>{{ transaction.description }}</td>
+                                <td class="text-end">
+                                    <div class="dropdown">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="dropdownMenuButton{{ transaction.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            &#x22EE;
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton{{ transaction.id }}">
+                                            <li><a class="dropdown-item" href="/edit/{{ transaction.id }}">Edit</a></li>
+                                            <li>
+                                                <form action="/delete/{{ transaction.id }}" method="post" style="display:inline;">
+                                                    <button type="submit" class="dropdown-item text-danger">Delete</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="alert alert-warning" role="alert">
+                        No transactions found.
+                    </div>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="/add" class="btn btn-primary">Add a Transaction</a>
+                    <a href="/all" class="btn btn-secondary">View All Transactions</a>
+                    <a href="/priorities" class="btn btn-secondary">Set Priorities</a> <!-- Added Set Priorities Button -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Side-by-Side Charts with Adjusted Widths -->
+        <div class="row">
+            <!-- Donut Chart with Depth Effect (2/5 Width) -->
+            <div class="col-md-4 mb-4">
+                <div class="card bg-dark text-white border-0 shadow-sm">
+                    <div class="card-header border-0">
+                        <h2 class="mb-0">Spending by Category</h2>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YTD Spending Chart (3/5 Width) -->
+            <div class="col-md-8 mb-4">
+                <div class="card bg-dark text-white border-0 shadow-sm">
+                    <div class="card-header border-0 d-flex justify-content-between">
+                        <h2 class="mb-0">YTD Spending Trend</h2>
+                        <div>
+                            <select id="ytdTimelineType" class="form-select form-select-sm text-dark">
+                                <option value="week">Weekly</option>
+                                <option value="month" selected>Monthly</option>
+                                <option value="year">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="ytdTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Section -->
+        <div id="insights-section" class="card bg-dark text-white border-0 shadow-sm mb-4">
+            <div class="card-header border-0">
+                <h2 class="mb-0">Spending Insights</h2>
+            </div>
+            <div class="card-body">
+                {% if insights %}
+                    <div class="list-group">
+                        {% for insight in insights %}
+                            <div class="list-group-item bg-dark text-white">{{ insight.message }}</div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No insights available. Add transactions and set priorities to view insights.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- JavaScript for Sidebar, Interactive Graphs -->
+        <script>
+            // Sidebar toggle functionality
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const closeSidebar = document.getElementById('closeSidebar');
+
+            toggleSidebar.addEventListener('click', () => {
+                sidebar.classList.add('open');
+                content.classList.add('expanded');
+                toggleSidebar.classList.add('hidden');
+            });
+
+            closeSidebar.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                content.classList.remove('expanded');
+                toggleSidebar.classList.remove('hidden');
+            });
+
+            // Fetch data dynamically for graphs (assuming your transactions variable is passed)
+            const transactions = {{ transactions|tojson }};
+            const categories = {};
+            const ytdTrend = {
+                week: {},
+                month: {},
+                year: {}
+            };
+
+            // Aggregate data for donut chart
+            transactions.forEach(transaction => {
+                const { category, amount, date } = transaction;
+                categories[category] = (categories[category] || 0) + amount;
+
+                // YTD Aggregation (Weekly, Monthly, Yearly)
+                const dateObj = new Date(date);
+                const week = `Week ${Math.ceil(dateObj.getDate() / 7)} ${dateObj.getFullYear()}`;
+                const month = dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+                const year = dateObj.getFullYear();
+
+                ytdTrend.week[week] = (ytdTrend.week[week] || 0) + amount;
+                ytdTrend.month[month] = (ytdTrend.month[month] || 0) + amount;
+                ytdTrend.year[year] = (ytdTrend.year[year] || 0) + amount;
+            });
+
+            // Donut Chart data preparation with depth effect
+            function createDonutChart() {
+                const labels = Object.keys(categories);
+                const data = Object.values(categories);
+                if (categoryChartInstance) categoryChartInstance.destroy();
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                gradient.addColorStop(0, '#ff6384');
+                gradient.addColorStop(1, '#cc65fe');
+                categoryChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Spending by Category',
+                            data: data,
+                            backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#9966ff', '#ff9f40'],
+                            hoverOffset: 6, // Increased hover offset for a "pop" effect
+                            borderColor: 'rgba(0, 0, 0, 0.1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '50%', // Creates the donut hole
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: context => `${context.label}: $${context.raw.toFixed(2)}`
+                                }
+                            }
+                        },
+                        animation: {
+                            animateScale: true, // Adds a scaling effect
+                            animateRotate: true // Adds a rotation effect
+                        }
+                    }
+                });
+            }
+
+            let categoryChartInstance;
+            createDonutChart();
+
+            function createYTDChart(timeline) {
+                const labels = Object.keys(ytdTrend[timeline]).sort().reverse(); // Reverse for chronological order
+                const data = labels.map(label => ytdTrend[timeline][label]);
+                if (ytdChartInstance) ytdChartInstance.destroy();
+                ytdChartInstance = new Chart(document.getElementById('ytdTrendChart'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: `YTD Spending (${timeline.charAt(0).toUpperCase() + timeline.slice(1)})`,
+                            data: data,
+                            borderColor: '#4bc0c0',
+                            tension: 0.1,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { ticks: { color: 'white' } },
+                            y: { ticks: { color: 'white' } }
+                        },
+                        plugins: {
+                            legend: { labels: { color: 'white' } },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x',
+                                    modifierKey: 'ctrl'
+                                },
+                                zoom: {
+                                    wheel: {
+                                        enabled: true
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'x'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            let ytdChartInstance;
+            createYTDChart('month');
+            document.getElementById('ytdTimelineType').addEventListener('change', (e) => createYTDChart(e.target.value));
+        </script>
+    </div>
+</body>
+</html>
