@@ -15,7 +15,7 @@ This web application provides an easy-to-use dashboard for tracking expenses, se
 - **Database**: MySQL
 - **Frontend**: HTML, CSS (Bootstrap), JavaScript (Chart.js)
 
-## How to Run the Project
+## How to Run the Project 
 
 1. **Clone the repository**:
    ```bash
