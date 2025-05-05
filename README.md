@@ -3,7 +3,7 @@
 As a university student, I know firsthand how easy it is to lose track of expenses and go over budget. The Smart Finance Tracker is designed to help students (and anyone else) better manage their finances, prioritize spending, and make informed financial decisions.
 
 This web application provides an easy-to-use dashboard for tracking expenses, setting spending priorities, and visualizing trends over time. With interactive charts, budget insights, and simple controls, it helps users stay on top of their finances and take control of their spending habits.
-
+ 
 ## Features
 - **Track Transactions**: Record and categorize expenses effortlessly.
 - **Set Spending Priorities**: Use a star rating system to prioritize where your money goes.
